@@ -1,20 +1,12 @@
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.net.URL;
 import java.util.*;
 import javax.xml.parsers.*; // XML packages and parsers modifying and data
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerFactory;
 import java.io.File;
 import java.io.IOException;
 
 
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
 // Step 1: Parse the XML data from the website
@@ -25,9 +17,9 @@ import org.xml.sax.SAXException;
 
 interface WeatherApp {
 
-    Document load_xml() throws IOException, ParserConfigurationException, SAXException;
+    void load_xml() throws IOException, ParserConfigurationException, SAXException;
 
-    HashMap<String, String> get_node_data() throws IOException, ParserConfigurationException, SAXException;
+    HashMap<String, String> get_time_data() throws IOException, ParserConfigurationException, SAXException;
 
 }
 
@@ -37,71 +29,92 @@ public class WeatherAPI implements WeatherApp {
     String file_path;
     String file_name;
     File file;
+    Document xml_doc;
 
-    ArrayList<String> info_list = new ArrayList<String>(); // Array for storing and modifying API data
-    HashMap <String, String> time_data = new HashMap<String, String>();
-    StringBuilder string_data = new StringBuilder();
+    ArrayList<String> info_list = new ArrayList<>(); // Array for storing and modifying API data
+    HashMap <String, String> time_data = new HashMap<>();
+    HashMap <String, String> element_data = new HashMap<>();
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 
-    public WeatherAPI(){
+
+    public WeatherAPI() throws ParserConfigurationException {
         url_adress = "https://www.yr.no/place/Sweden/Norrbotten/Luleå/forecast.xml";
         file_path = "C:\\Users\\vikto\\IdeaProjects\\Portfolio\\src\\forecast.xml";
         file_name = "forecast.xml";
         file = new File(file_path);
-
     }
     //Under progress for solving formating issues!
-    public static String toString(Document d) throws TransformerConfigurationException {
-        TransformerFactory factory = TransformerFactory.newInstance();
-        Transformer transformer = factory.newTransformer();
-        return ""+""+"";
+    public String toString() {
+        return "";
     }
 
+    //setter
     @Override
-    public Document load_xml() throws IOException, ParserConfigurationException, SAXException {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    public void load_xml() throws IOException, ParserConfigurationException, SAXException {
+        DocumentBuilder builder = factory.newDocumentBuilder();
         try{
-            return factory.newDocumentBuilder().parse(new URL(url_adress).openStream());
+
+            this.xml_doc = builder.parse(new URL(url_adress).openStream());
+            this.xml_doc.normalize();
         }catch (FileNotFoundException e){
-            return factory.newDocumentBuilder().parse(file_path);
+            System.out.println("URL wasn't found!!!");
+
+        }try{
+
+            System.out.println("XML was found locally!");
+            this.xml_doc = builder.parse(file_path);
+            this.xml_doc.normalize();
+
+        } catch (Exception e) {
+            System.out.println("Something went wrong!!!");
         }
     }
 
-    @Override
-    public HashMap<String, String> get_node_data() throws IOException, ParserConfigurationException, SAXException {
-        //Document gives access to root data of the document tree & loading file from class init and crete new parse object
-        Document xml_doc = load_xml();
-        xml_doc.getDocumentElement().normalize();
+    //getter that return the current XML document object
+    public Document get_xml_doc() {
+        return this.xml_doc;
+    }
 
-        NodeList xml_list_node = xml_doc.getElementsByTagName("time"); //list node
-        NodeList xml_meta = xml_doc.getElementsByTagName("meta");
+    public void show_last_update(){
+        Document xml_update = get_xml_doc();
+        NodeList xml_meta = xml_update.getElementsByTagName("meta");
         Node meta = xml_meta.item(0);
         Element last_update = (Element) meta;
         System.out.println("\n"+"Last update and next update: "+last_update.getTextContent());
+    }
 
-        for (int i=0; i< xml_list_node.getLength(); i++){
-            Node time_list = xml_list_node.item(i);
+    @Override
+    public HashMap<String, String> get_time_data(){
+
+        Document xml_data = get_xml_doc(); //Document for access to root data of XML tree
+
+        NodeList xml_list = xml_data.getElementsByTagName("time"); //list node for time data
+
+        for (int i=0; i<xml_list.getLength(); i++){
+            Node time_list = xml_list.item(i);
             if (time_list.getNodeType()==Node.ELEMENT_NODE){
                 Element time_element = (Element) time_list;
-
                 System.out.println("--------------------------------");
                 System.out.println(time_element.getTagName()+": "+time_element.getAttribute("from"));
 
+
                 NodeList time_detail = time_list.getChildNodes();
                 info_list.clear();
+                //looping through the attributes for the different tags and corresponding value
                 for (int j=0; j<time_detail.getLength(); j++){
                     Node item_detail = time_detail.item(j);
                     if (item_detail.getNodeType()==Node.ELEMENT_NODE){ //hasAttribute(String name)
                         Element item_element = (Element) item_detail;
 
-                        info_list.add(item_element.getTagName()+": " +item_element.getAttribute("value") +" "+item_element.getAttribute("unit")
-                                +item_element.getAttribute("mps")+" "+item_element.getAttribute("name")+"\n");
+                        element_data.put(item_element.getTagName(), item_element.getAttribute("value") +" "+item_element.getAttribute("unit")
+                                +item_element.getAttribute("mps")+" "+item_element.getAttribute("name"));
 
-                        System.out.println(item_element.getTagName()+": " +item_element.getAttribute("value") +" "+item_element.getAttribute("unit")
-                                +item_element.getAttribute("mps")+" "+item_element.getAttribute("name")+";");
+                        System.out.println(item_element.getTagName()+": "+item_element.getAttribute("value") +" "+item_element.getAttribute("unit")
+                                +item_element.getAttribute("mps")+" "+item_element.getAttribute("name"));
                         }
                     }
                 //hashmap for key-value pair:
-                time_data.put(time_element.getAttribute("from"), String.valueOf(info_list));
+                time_data.put(time_element.getAttribute("from"), String.valueOf(element_data));
                 }
             }
         return time_data;
@@ -112,10 +125,15 @@ public class WeatherAPI implements WeatherApp {
         String xml_file_name = args[0]; //optional way to load data
 
         api.load_xml();
-        api.get_node_data();
+        api.show_last_update();
+        api.get_time_data();
 
-        System.out.println("\n"+"Stored forecast dates (keys): "+"\n"+api.time_data.keySet());
+        System.out.println("\n"+"Stored forecast dates (keys): "+"\n"+api.time_data.keySet()+"\n");
         //System.out.println(Arrays.toString(api.time_data.get("2021-12-14T07:00:00").split(",")));
         //System.out.println(api.time_data.values());
+        //System.out.println(api.time_data);
     }
 }
+
+//1. change format on XML date to something more easy
+//2. loop through the keys in the hashmap and format the string (f-string)
