@@ -53,21 +53,23 @@ public class WeatherAPI implements WeatherApp {
     public void load_xml() throws IOException, ParserConfigurationException, SAXException {
         DocumentBuilder builder = factory.newDocumentBuilder();
         try{
-
             this.xml_doc = builder.parse(new URL(url_adress).openStream());
+            System.out.println("URL was loaded successfully!");
             this.xml_doc.normalize();
-        }catch (FileNotFoundException e){
+        }
+        catch (FileNotFoundException e) {
             System.out.println("URL wasn't found!!!");
 
-        }try{
+            try{
+                this.xml_doc = builder.parse(file_path);
+                System.out.println("XML was found locally!");
+                this.xml_doc.normalize();
+            }catch (FileNotFoundException exception){
+                System.out.println("Something went wrong!");
+            }
 
-            System.out.println("XML was found locally!");
-            this.xml_doc = builder.parse(file_path);
-            this.xml_doc.normalize();
-
-        } catch (Exception e) {
-            System.out.println("Something went wrong!!!");
         }
+
     }
 
     //getter that return the current XML document object
@@ -129,7 +131,7 @@ public class WeatherAPI implements WeatherApp {
         api.get_time_data();
 
         System.out.println("\n"+"Stored forecast dates (keys): "+"\n"+api.time_data.keySet()+"\n");
-        //System.out.println(Arrays.toString(api.time_data.get("2021-12-14T07:00:00").split(",")));
+        //System.out.println(Arrays.toString(api.time_data.get("2021-12-16T07:00:00").split(",")));
         //System.out.println(api.time_data.values());
         //System.out.println(api.time_data);
     }
